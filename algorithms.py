@@ -4,33 +4,36 @@ import random
 
 
 def run_algorithm(bandit, N, algoName):
-    totalReward, totalCorrect = 0, 0
     actions = bandit.getActions
-    total_reward_action = np.zeros(length(bandit.getActions()))          # the amount of reward for each action
-    total_action_instances = np.zeros(length(bandit.getActions()))       # amount of times each action has been selected
-    average_expected_reward = np.ones(length(bandit.getActions()))       # average reward per action, initialized to 1
+    totalRewardAction = np.zeros(length(bandit.getActions()))          # the amount of reward for each action
+    totalActionInstances = np.zeros(length(bandit.getActions()))       # amount of times each action has been selected
+    averageExpectedReward = np.ones(length(bandit.getActions()))       # average reward per action, initialized to 1
     for iteration in range(0, N):
-        pass
+        action = algo_chooser(algoName, averageExpectedReward)         # select an action according to the algorithm
+        reward += bandit.execute_actions(action)
+        # update the total reward for the action, the amount of action instances, and the average expected reward for it
+        totalRewardAction[action] += reward
+        totalActionInstances[action] += 1
+        averageExpectedReward[action] = float(totalRewardAction[action]) / float(totalActionInstances[action])
+
     return totalReward, totalCorrect  # return the total reward, and the total no. of optimal choices
 
 def algo_chooser(algoName, average_expected_reward):
     if (algoName == "greedy"):
         return greedy(average_expected_reward)
-    elif ():
-        pass
-
-
+    elif (algoName == "e_greedy"):
+        return e_greedy(average_expected_reward)
 
 def greedy(average_expected_reward):
     return np.argmax(average_expected_reward)
 
 
-def e_greedy(actions, estimates, epsilon):
+def e_greedy(average_expected_reward):
     num = random.random()
     if num < epsilon:
         return random.choice(actions)
     else:
-        return greedy(actions, estimates)
+        return np.argmax(average_expected_reward)
 
 
 def optimistic_initial_values(length):

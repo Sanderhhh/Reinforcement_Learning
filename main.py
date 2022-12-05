@@ -10,6 +10,7 @@ if __name__ == "__main__":
             greedyAverage += average
             greedyCorrect += correct
 
+
         if bernoulli:
             print("Average reward and correct percentage for greedy in the bernoulli problem:")
         else:
