@@ -1,4 +1,4 @@
-import numpy
+import random
 
 class State():
     def __init__(self):
@@ -8,12 +8,12 @@ class State():
         self.transitions = []  # list of integers with the numbers of the states that can be moved to
 
     def execute_action(self, actionName):
-        for index in range(self.actions):
-            if (actionName == self.actions[index]):
+        for index in self.actions:
+            if (actionName == index):
                 # if bernoulli variation of the problem, return 1 or 0, depending on the reward
                 if self.bernoulli:
-                    randomChance = numpy.random.normal()
-                    if (randomChance > self.rewards[index]):
+                    randomChance = random.uniform(0, 1)
+                    if (randomChance < self.rewards[index]):
                         return self.rewards[index], self.transitions[index]
                     else:
                         return 0, self.transitions[index]
@@ -30,17 +30,28 @@ class State():
     def get_actions(self):
         return self.actions  # return the list of action names
 
+    def get_best_action(self):      # return the max of the rewards
+        max = 0
+        for idx, value in enumerate(self.rewards):
+            if self.rewards[idx] >= self.rewards[max]:
+                max = idx
+        return max
+
 class Map():
     def __init__(self):
         self.current_state = 0
         self.states = []
 
     def set_states(self, states):
-        self.states = states
+        self.states.append(states)
 
     def execute_actions(self, index):
-        reward, self.current_state = states[current_state].execute_action(index)
+        reward, self.current_state = self.states[self.current_state].execute_action(index)
         return reward
 
     def get_actions(self):
-        return states[current_state].get_actions()
+        return self.states[self.current_state].get_actions()
+
+    def get_current_best_action(self):
+        # get the best action at the current state, so we can verify the algorithms effectiveness
+        return self.states[self.current_state].get_best_action()
