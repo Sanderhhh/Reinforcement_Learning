@@ -32,7 +32,15 @@ class State():
 
 class Map():
     def __init__(self):
+        self.current_state = 0
         self.states = []
 
     def set_states(self, states):
         self.states = states
+
+    def execute_actions(self, index):
+        reward, self.current_state = states[current_state].execute_action(index)
+        return reward
+
+    def get_actions(self):
+        return states[current_state].get_actions()

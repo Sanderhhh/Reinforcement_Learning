@@ -3,15 +3,26 @@ import objects
 import random
 
 
-def run_algorithm(Bandit, N, algoName):
+def run_algorithm(bandit, N, algoName):
     totalReward, totalCorrect = 0, 0
+    actions = bandit.getActions
+    total_reward_action = np.zeros(length(bandit.getActions()))          # the amount of reward for each action
+    total_action_instances = np.zeros(length(bandit.getActions()))       # amount of times each action has been selected
+    average_expected_reward = np.ones(length(bandit.getActions()))       # average reward per action, initialized to 1
     for iteration in range(0, N):
         pass
     return totalReward, totalCorrect  # return the total reward, and the total no. of optimal choices
 
+def algo_chooser(algoName, average_expected_reward):
+    if (algoName == "greedy"):
+        return greedy(average_expected_reward)
+    elif ():
+        pass
 
-def greedy(actions, estimates):
-    return actions[np.argmax(estimates)]
+
+
+def greedy(average_expected_reward):
+    return np.argmax(average_expected_reward)
 
 
 def e_greedy(actions, estimates, epsilon):
