@@ -5,7 +5,7 @@ if __name__ == "__main__":
     for algo in range(0, 2):
         if algo == 0:                  # set the algorithm that we want to use
             algorithm = "greedy"
-        else:
+        elif algo == 1:
             algorithm = "e_greedy"
 
         for bernoulli in range(0, 2):  # run the gaussian and bernoulli version of the problem

@@ -7,6 +7,7 @@ def run_algorithm(bandit, N, algoName):
     totalRewardAction = np.zeros(len(bandit.get_actions()))  # the amount of reward for each action
     totalActionInstances = np.zeros(len(bandit.get_actions()))  # amount of times each action has been selected
     averageExpectedReward = np.ones(len(bandit.get_actions()))  # average reward per action, initialized to 1
+    action_preferences = np.ones(len(bandit.get_actions())) # action preferences per action, initialized to 1
     for iteration in range(0, N):
         action = algo_chooser(algoName, averageExpectedReward)  # select an action according to the algorithm
         reward = bandit.execute_actions(action)
@@ -34,6 +35,10 @@ def algo_chooser(algoName, average_expected_reward):
         return greedy(average_expected_reward)
     elif algoName == "e_greedy":
         return e_greedy(average_expected_reward)
+    elif algoName == "optimistic":
+        return optimistic_initial_values(len(average_expected_reward))
+    elif algoName == "ucb":
+        return
 
 
 def greedy(average_expected_reward):
@@ -70,6 +75,19 @@ def calculate_uncertainty(n, t):
 
 def action_preferences():
     return
+
+
+def update_preferences(previous_action_idx, chosen_action_idx, preferences, alpha, reward, average_reward):
+    policy = boltzmann_distribution(chosen_action_idx, preferences)
+    preferences[chosen_action_idx] = preferences[chosen_action_idx] + alpha * (reward - average_reward) * (1 - policy)
+    if previous_action_idx != chosen_action_idx:
+        preferences[previous_action_idx] = preferences[chosen_action_idx] + alpha * (reward - average_reward) * policy
+
+    return preferences
+
+
+def boltzmann_distribution(idx, preferences):
+    return np.exp(preferences[idx]) / np.sum(preferences)
 
 
 def make_bandit(actionCount, bernoulli):
