@@ -1,23 +1,23 @@
-import matplotlib
 import numpy as np
 import objects
 import random
 import matplotlib.pyplot as plt
 
 
-def plot_graph(listOfLists, title = "new2"):
+def plot_graph(listOfLists, accuracyList, title = "new3"):
     label_set = ["egreedy_gaussian", "egreedy_bernoulli", "greedy_gaussian", "greedy_bernoulli", "optimistic_gauss",
                  "optimistic_bernoulli", "ucb_gaussian", "ucb_bernoulli", "action_pref_gauss", "action_pref_bernoulli"]
     N = len(listOfLists[0])
-    zeros = [0] * N
     for index in range(len(listOfLists)):
         plt.plot(listOfLists[index], label = label_set[index])
     plt.legend(label_set)
     plt.title(title)
     plt.ylabel("Average reward")
     plt.xlabel("Iteration")
+    print("Average proportion of optimal answers per algorithm: ")
+    for index in range(len(accuracyList)):
+        print(label_set[index] + ": " + str(accuracyList[index]))
     plt.show()
-
 
 def run_algorithm(bandit, N, algoName, ucb, optimistic, preferences):
     totalRewardAction = np.zeros(len(bandit.get_actions()))      # the amount of reward for each action
