@@ -4,24 +4,26 @@ import random
 import matplotlib.pyplot as plt
 
 
-def plot_graph(listOfLists, accuracyList, title = "new3"):
+def plot_graph(listOfLists, accuracyList, title="Trend of rewards during learning"):
     label_set = ["egreedy_gaussian", "egreedy_bernoulli", "greedy_gaussian", "greedy_bernoulli", "optimistic_gauss",
                  "optimistic_bernoulli", "ucb_gaussian", "ucb_bernoulli", "action_pref_gauss", "action_pref_bernoulli"]
     N = len(listOfLists[0])
+    plt.figure(figsize=(22, 14))
     for index in range(len(listOfLists)):
-        plt.plot(listOfLists[index], label = label_set[index])
-    plt.legend(label_set)
+        plt.plot(listOfLists[index], label=label_set[index])
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     plt.title(title)
     plt.ylabel("Average reward")
-    plt.xlabel("Iteration")
+    plt.xlabel("Time step")
     print("Average proportion of optimal answers per algorithm: ")
     for index in range(len(accuracyList)):
         print(label_set[index] + ": " + str(accuracyList[index]))
     plt.show()
 
+
 def run_algorithm(bandit, N, algoName, ucb, optimistic, preferences):
-    totalRewardAction = np.zeros(len(bandit.get_actions()))      # the amount of reward for each action
-    totalActionInstances = np.zeros(len(bandit.get_actions()))   # amount of times each action has been selected
+    totalRewardAction = np.zeros(len(bandit.get_actions()))  # the amount of reward for each action
+    totalActionInstances = np.zeros(len(bandit.get_actions()))  # amount of times each action has been selected
     averageExpectedReward = np.zeros(len(bandit.get_actions()))  # average reward per action, initialized to 0
     probabilities = np.zeros(len(bandit.get_actions()))
     if optimistic:
@@ -46,8 +48,7 @@ def run_algorithm(bandit, N, algoName, ucb, optimistic, preferences):
         totalActionInstances[action] += 1
         # implementation of action preferences
         if preferences:
-            averageExpectedReward = update_preferences(action, averageExpectedReward, totalActionInstances, reward,
-                                                       totalReward)
+            averageExpectedReward = update_preferences(action, averageExpectedReward, reward, totalReward/(iteration+1))
             probabilities = update_probabilities(averageExpectedReward, probabilities)
         # implementation of upper confidence-bound
         elif ucb:
@@ -92,39 +93,34 @@ def e_greedy(average_expected_reward, epsilon=0.1):
 
 def u_c_b(average_expected_reward, total_action_reward, total_action_instances, t):
     for i in range(len(average_expected_reward)):
-        if total_action_instances[i] == 0:
-            average_expected_reward[i] = calculate_uncertainty(total_action_instances[i], t + 1)
-        else:
-            average_expected_reward[i] = float(total_action_reward[i]) / float(total_action_instances[i]) \
-                                    + calculate_uncertainty(total_action_instances[i], t + 1)
+        average_expected_reward[i] = float(total_action_reward[i]) / (float(total_action_instances[i]) + 1) \
+                                     + calculate_uncertainty(total_action_instances[i] + 1, t + 1)
 
     return average_expected_reward
 
 
 def calculate_uncertainty(n, t):
-    c = 5.5  # value with wich we tamper for better performance
-    if n == 0:
-        return c * np.sqrt(np.log(t))
+    c = 0.6  # value with which we tamper for better performance
     return c * np.sqrt(np.log(t) / n)
 
 
-def update_preferences(chosen_action_idx, preferences, total_action_instances, reward, average_reward):
-    preferences[chosen_action_idx] = preferences[chosen_action_idx] + 1 / \
-                                     float(total_action_instances[chosen_action_idx]) * (reward - average_reward) \
+def update_preferences(chosen_action_idx, preferences, reward, average_reward):
+    alpha = 0.8
+
+    preferences[chosen_action_idx] = preferences[chosen_action_idx] + alpha * (reward - average_reward) \
                                      * (1 - boltzmann_distribution(chosen_action_idx, preferences))
     for i in range(len(preferences)):
         if i != chosen_action_idx:
-            preferences[i] = preferences[i] + 1 / float(total_action_instances[i]) \
-                             * (reward - average_reward) * boltzmann_distribution(i, preferences)
+            preferences[i] = preferences[i] + alpha * (reward - average_reward) * boltzmann_distribution(i, preferences)
 
     return preferences
 
 
 def boltzmann_distribution(idx, preferences):
-    sum = 0
+    s = 0
     for x in preferences:
-        sum += np.exp(x)
-    return np.exp(preferences[idx]) / sum
+        s += np.exp(x)
+    return np.exp(preferences[idx]) / s
 
 
 def make_bandit(actionCount, bernoulli):
