@@ -8,10 +8,10 @@ def plot_graph(listOfLists, accuracyList, title="Trend of rewards during learnin
     label_set = ["egreedy_gaussian", "egreedy_bernoulli", "greedy_gaussian", "greedy_bernoulli", "optimistic_gauss",
                  "optimistic_bernoulli", "ucb_gaussian", "ucb_bernoulli", "action_pref_gauss", "action_pref_bernoulli"]
     N = len(listOfLists[0])
-    plt.figure(figsize=(22, 14))
+    plt.figure(figsize=(12, 8))
     for index in range(len(listOfLists)):
         plt.plot(listOfLists[index], label=label_set[index])
-    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.legend()
     plt.title(title)
     plt.ylabel("Average reward")
     plt.xlabel("Time step")
@@ -93,12 +93,12 @@ def u_c_b(average_expected_reward, total_action_reward, total_action_instances, 
 
 
 def calculate_uncertainty(n, t):
-    c = 0.6  # value with which we tamper for better performance
+    c = 0.4  # value with which we tamper for better performance
     return c * np.sqrt(np.log(t) / n)
 
 
 def update_preferences(chosen_action_idx, probabilities, preferences, reward, average_reward):
-    alpha = 19.33
+    alpha = 2.75
 
     probabilities[chosen_action_idx] = boltzmann_distribution(chosen_action_idx, preferences)
     preferences[chosen_action_idx] = preferences[chosen_action_idx] + alpha * (reward - average_reward) \

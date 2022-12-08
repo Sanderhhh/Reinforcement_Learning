@@ -1,7 +1,7 @@
 import algorithms
 
 if __name__ == "__main__":
-    N, actionCount, experimentCount = 1000, 50, 5
+    N, actionCount, experimentCount = 1000, 50, 500
     optimistic, ucb, preferences = 0, 0, 0
     print("Experiments run with " + str(N) + " iterations, " +
           str(actionCount) + " actions and " + str(experimentCount) + " experiments per setup.")
