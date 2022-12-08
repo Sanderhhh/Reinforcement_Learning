@@ -48,8 +48,8 @@ def run_algorithm(bandit, N, algoName, ucb, optimistic, preferences):
         totalActionInstances[action] += 1
         # implementation of action preferences
         if preferences:
-            averageExpectedReward = update_preferences(action, averageExpectedReward, reward, totalReward/(iteration+1))
-            probabilities = update_probabilities(averageExpectedReward, probabilities)
+            averageExpectedReward, probabilities = update_preferences(action, probabilities, averageExpectedReward,
+                                                                      reward, totalReward/(iteration+1))
         # implementation of upper confidence-bound
         elif ucb:
             averageExpectedReward = u_c_b(averageExpectedReward, totalRewardAction, totalActionInstances, iteration)
@@ -63,13 +63,6 @@ def run_algorithm(bandit, N, algoName, ucb, optimistic, preferences):
     if totalReward >= 1000:
         print(averageExpectedReward)
     return totalReward / float(N), totalCorrect / float(N), rewardList
-
-
-def update_probabilities(preferences, probabilities):
-    for i in range(len(preferences)):
-        probabilities[i] = boltzmann_distribution(i, preferences)
-
-    return probabilities
 
 
 def algo_chooser(algoName, average_expected_reward):
@@ -104,16 +97,18 @@ def calculate_uncertainty(n, t):
     return c * np.sqrt(np.log(t) / n)
 
 
-def update_preferences(chosen_action_idx, preferences, reward, average_reward):
-    alpha = 0.8
+def update_preferences(chosen_action_idx, probabilities, preferences, reward, average_reward):
+    alpha = 19.33
 
+    probabilities[chosen_action_idx] = boltzmann_distribution(chosen_action_idx, preferences)
     preferences[chosen_action_idx] = preferences[chosen_action_idx] + alpha * (reward - average_reward) \
-                                     * (1 - boltzmann_distribution(chosen_action_idx, preferences))
+                                     * (1 - probabilities[chosen_action_idx])
     for i in range(len(preferences)):
         if i != chosen_action_idx:
-            preferences[i] = preferences[i] + alpha * (reward - average_reward) * boltzmann_distribution(i, preferences)
+            probabilities[i] = boltzmann_distribution(i, preferences)
+            preferences[i] = preferences[i] - alpha * (reward - average_reward) * probabilities[i]
 
-    return preferences
+    return preferences, probabilities
 
 
 def boltzmann_distribution(idx, preferences):
