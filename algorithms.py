@@ -26,7 +26,6 @@ def run_algorithm(bandit, N, algoName, ucb, optimistic, preferences):
     probabilities = np.zeros(len(bandit.get_actions()))
     if optimistic:
         averageExpectedReward = np.ones(len(bandit.get_actions()))  # average reward per action, initialized to 1
-    previous_action = -1
 
     totalReward = 0
     rewardList = []
@@ -47,16 +46,14 @@ def run_algorithm(bandit, N, algoName, ucb, optimistic, preferences):
         totalActionInstances[action] += 1
         # implementation of action preferences
         if preferences:
-            averageExpectedReward = update_preferences(previous_action, action,
-                                                       averageExpectedReward, 1/float(totalActionInstances[action]),
-                                                       reward, averageExpectedReward[action])
+            averageExpectedReward = update_preferences(action, averageExpectedReward, totalActionInstances, reward,
+                                                       totalReward)
             probabilities = update_probabilities(averageExpectedReward, probabilities)
         # implementation of upper confidence-bound
         elif ucb:
             averageExpectedReward = u_c_b(averageExpectedReward, totalRewardAction, totalActionInstances, iteration)
         else:
             averageExpectedReward[action] = float(totalRewardAction[action]) / float(totalActionInstances[action])
-        previous_action = action
 
     # the amount of correct answers is the index of the answer with the highest reward's frequency
     best_answer = bandit.get_current_best_action()
@@ -111,11 +108,14 @@ def calculate_uncertainty(n, t):
     return c * np.sqrt(np.log(t) / n)
 
 
-def update_preferences(previous_action_idx, chosen_action_idx, preferences, alpha, reward, average_reward):
-    policy = boltzmann_distribution(chosen_action_idx, preferences)
-    preferences[chosen_action_idx] = preferences[chosen_action_idx] + alpha * (reward - average_reward) * (1 - policy)
-    if previous_action_idx != chosen_action_idx and previous_action_idx != -1:
-        preferences[previous_action_idx] = preferences[chosen_action_idx] + alpha * (reward - average_reward) * policy
+def update_preferences(chosen_action_idx, preferences, total_action_instances, reward, average_reward):
+    preferences[chosen_action_idx] = preferences[chosen_action_idx] + 1 / \
+                                     float(total_action_instances[chosen_action_idx]) * (reward - average_reward) \
+                                     * (1 - boltzmann_distribution(chosen_action_idx, preferences))
+    for i in range(len(preferences)):
+        if i != chosen_action_idx:
+            preferences[i] = preferences[i] + 1 / float(total_action_instances[i]) \
+                             * (reward - average_reward) * boltzmann_distribution(i, preferences)
 
     return preferences
 
