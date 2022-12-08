@@ -1,7 +1,7 @@
 import algorithms
 
 if __name__ == "__main__":
-    N, actionCount, experimentCount = 1000, 50, 500
+    N, actionCount, experimentCount = 1000, 50, 1000
     optimistic, ucb, preferences = 0, 0, 0
     print("Experiments run with " + str(N) + " iterations, " +
           str(actionCount) + " actions and " + str(experimentCount) + " experiments per setup.")
@@ -25,6 +25,7 @@ if __name__ == "__main__":
             greedyAverage, greedyCorrect = 0, 0
             rewardList = [0] * N
             for experiment in range(0, experimentCount):
+                print("Experiment number " + str(experiment))
                 BanditProblem = algorithms.make_bandit(actionCount, bernoulli)
                 average, correct, experimentList = algorithms.run_algorithm(BanditProblem, N, algorithm, ucb, optimistic, preferences)
                 for index in range(len(experimentList)):
