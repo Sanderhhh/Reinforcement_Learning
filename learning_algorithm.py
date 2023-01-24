@@ -3,14 +3,6 @@ import chess
 import chess.engine
 
 # TODO: implement TD learning and possibly other algorithms
-class TD_learning:
-    def __init__(self):
-        self.alpha = 0.5
-        self.gamma = 0.8
-
-    def calculate_v(self, map, state):
-        pass
-
 # Q_learning class that contains formulas and parameters for the Q-learning algorithm
 class Q_learning:
     def __init__(self):
@@ -23,14 +15,17 @@ class Q_learning:
                                     (self.gamma * map.get_max_q_next_state(state, action)) - map.get_qvalue(state, action))
 
 class Map:
-    def __init__(self):
+    def __init__(self, reward_strategy = 'engine_eval', useEngine = 'True'):
         self.algorithm = Q_learning()           # Algorithm of our choosing
         self.policy = defaultdict(dict)         # Dictionary of best move per state
         self.qvalues = defaultdict(dict)        # Double-indexed dictionary with q-values for state-action pairs
-        self.reward_strategy = 'engine_eval'    # Reward strategy
+        self.reward_strategy = reward_strategy    # Reward strategy
         # Chess engine that calculates the best moves and (optionally) state rewards
-        self.engine = chess.engine.SimpleEngine.popen_uci\
-            (r"C:\Users\hofsa\Documents\stockfish_15.1_win_x64_popcnt\stockfish_15.1_win_x64_popcnt\stockfish-windows-2022-x86-64-modern.exe")
+        self.useEngine = useEngine
+        self.Engine = None
+        if useEngine == True or reward_strategy == 'engine_eval':
+            self.engine = chess.engine.SimpleEngine.popen_uci\
+                (r"C:\Users\hofsa\Documents\stockfish_15.1_win_x64_popcnt\stockfish_15.1_win_x64_popcnt\stockfish-windows-2022-x86-64-modern.exe")
 
     def update_policy(self, board, legal_moves):
         bestMove = 0    # keeps track of the uci-string associated with the best move
@@ -83,11 +78,11 @@ class Map:
                 score = 0
             state.pop()
             return score
-        # simulate the action that our opponent will take, given our action
-        blackMove = self.engine.play(state, chess.engine.Limit(time = 0.1))
-        state.push(blackMove.move)
         # if the reward strategy is engine evaluation, let the engine analyze the position, and use that to calculate the reward
         if self.reward_strategy == 'engine_eval':
+            # simulate the action that our opponent will take, given our action
+            blackMove = self.engine.play(state, chess.engine.Limit(time=0.1))
+            state.push(blackMove.move)
             evaluation = self.engine.analyse(state, chess.engine.Limit(time = 0.1))
             score = evaluation['score'].white()
             if isinstance(score, chess.engine.Mate):    # if the score is presented as a mate in x, convert it to an integer
@@ -95,7 +90,10 @@ class Map:
             # if the score is presented as centipawns, apply division such that it is smaller than mating scores
             if isinstance(score, chess.engine.Cp):
                 score = score.score()/1000
-        state.pop()
+            state.pop()     # undo the simulated moves
+        if self.reward_strategy == 'opponent_moves':
+            legal_moves_black = state.legal_moves.count()
+            score = 8 - legal_moves_black
         state.pop()
         print("Score for the move " + action + ": " + str(score))
         return score
