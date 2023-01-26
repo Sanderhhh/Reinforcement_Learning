@@ -1,6 +1,8 @@
 from collections import defaultdict
 import chess
 import chess.engine
+import numpy as np
+import random
 
 # TODO: implement TD learning and possibly other algorithms
 # Q_learning class that contains formulas and parameters for the Q-learning algorithm
@@ -65,6 +67,24 @@ class Map:
                     self.qvalues[board2.fen()][moremoves.uci()] = 0
             board2.pop()
         return 0
+    
+    #TODO integrate this function with chess
+    def e_greedy(self, q_values, epsilon):
+        num = random.uniform(0,1)
+        if num < epsilon:
+            return random.randint(0, len(q_values) - 1)
+        else:
+            return np.argmax(q_values)
+    
+    #TODO integrate this function with chess
+    #TODO float(total_action_reward[i]) / (float(total_action_instances[i]) + 1) should probably be changed with stored Q values
+    def u_c_b(self, q_values, total_action_reward, total_action_instances, t):
+        c = 0.4  # value with which we tamper for better performance
+        for i in range(len(q_values)):
+            q_values[i] = float(total_action_reward[i]) / (float(total_action_instances[i]) + 1) \
+                                        + c * np.sqrt(np.log(t + 1) / (total_action_instances[i] + 1))
+
+        return q_values
 
     # TODO: add more state reward strategies
     def get_state_reward(self, state, action):
