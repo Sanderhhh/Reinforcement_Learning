@@ -7,7 +7,6 @@ import random
 # Q_learning class that contains formulas and parameters for the Q-learning algorithm
 import run_algorithm
 
-
 class Q_learning:
     def __init__(self, type = "q_learning"):
         self.alpha = 0.5
@@ -39,16 +38,21 @@ class Map:
 
     def update_policy(self, board, legal_moves):
         bestMove = 0    # keeps track of the uci-string associated with the best move
-        max = 0         # value of the best move
+        max = -100000         # value of the best move
         for move in legal_moves:        # loop through all the moves in a state and choose the best one
             try:
-                print("For the move " + move.uci() + ", the Q-value is: " + str(self.qvalues[board.fen()][move.uci()]))
-                if self.qvalues[board.fen()][move.uci()] >= max:
+                # print("For the move " + move.uci() + ", the Q-value is: " + str(self.qvalues[board.fen()][move.uci()]))
+                if self.qvalues[board.fen()][move.uci()] == max:
+                    num = random.randint(0, legal_moves.count())
+                    if num == 1:
+                        # print("Skibiddi bibbidy")
+                        bestMove = move.uci()
+                if self.qvalues[board.fen()][move.uci()] > max:
                     max = self.qvalues[board.fen()][move.uci()]
                     bestMove = move.uci()
             except KeyError:
                 self.qvalues[board.fen()][move.uci()] = 0
-                if self.qvalues[board.fen()][move.uci()] >= max:
+                if self.qvalues[board.fen()][move.uci()] > max:
                     max = self.qvalues[board.fen()][move.uci()]
                     bestMove = move.uci()
         self.policy[board.fen()] = bestMove     # set the policy to the best move
@@ -71,7 +75,9 @@ class Map:
         move_from_uci = chess.Move.from_uci(action)
         board2 = chess.Board(state.fen())
         board2.push(move_from_uci)
-        max_q = 0
+        max_q = -1000
+        if board2.legal_moves.count()==0:
+            return 0
         for black_move in board2.legal_moves:
             # make a move for black
             board2.push(black_move)
@@ -82,6 +88,8 @@ class Map:
                         max_q = self.qvalues[board2.fen()][white_move.uci()]
                 except KeyError:
                     self.qvalues[board2.fen()][white_move.uci()] = 0
+                    if max_q == -1000:
+                        max_q = 0
             board2.pop()
         return max_q
 
@@ -129,9 +137,9 @@ class Map:
         if state.is_game_over():                        # if the game is over, return the max reward, but only if we win
             if state.is_checkmate():
                 print("CHECKMATE")
-                score = 100
+                score = 10
             else:
-                score = -1
+                score = -1.1
             state.pop()
             return score
         for strategy in self.reward_strategies:
@@ -143,10 +151,10 @@ class Map:
                 evaluation = self.engine.analyse(state, chess.engine.Limit(time = 0.1))
                 score = evaluation['score'].white()
                 if isinstance(score, chess.engine.Mate):    # if the score is presented as a mate in x, convert it to an integer
-                    score = score.score(mate_score = 100)
+                    score = score.score(mate_score = 2)
                 # if the score is presented as centipawns, apply division such that it is smaller than mating scores
                 if isinstance(score, chess.engine.Cp):
-                    score = score.score()/1000
+                    score = score.score()/1000 - 10
                 state.pop()     # undo the simulated moves
             if strategy == 'opponent_moves':
                 score += 8 - state.legal_moves.count()
@@ -156,9 +164,8 @@ class Map:
                 black_king = state.king(chess.BLACK)
                 point_a = chess.parse_square(action[0:2])
                 point_b = chess.parse_square(action[2:4])
-                if chess.square_distance(black_king, point_a) > chess.square_distance(black_king, point_b):
-                    score += chess.square_distance(black_king, point_a) - chess.square_distance(black_king, point_b)
-
+                if chess.square_distance(black_king, point_a) < chess.square_distance(black_king, point_b):
+                    score -= 0.1
             if strategy == 'king_proximity':
                 black_king = state.king(chess.BLACK)
                 point_a = chess.parse_square(action[0:2])
@@ -167,7 +174,6 @@ class Map:
                     if chess.square_distance(black_king, point_a) > chess.square_distance(black_king, point_b):
                         print("KING PROXIMITY: " + action)
                         score += chess.square_distance(black_king, point_a) - chess.square_distance(black_king, point_b)
-
             if strategy == 'blunder_queen':
                 white_king = state.king(chess.WHITE)
                 white_pieces = state.pieces(chess.QUEEN, chess.WHITE)
@@ -175,7 +181,7 @@ class Map:
                 black_king = state.king(chess.BLACK)
                 if chess.square_distance(black_king, white_queen) == 1 \
                         and chess.square_distance(white_queen, white_king) > 1:
-                    score = -1
+                    score = -1.1
             if strategy == 'push_to_wall':
                 for move in state.legal_moves:
                     beginning_uci = (move.uci())[0:2]
@@ -186,6 +192,8 @@ class Map:
                     if chess.square_distance(beginning, corner) > \
                             chess.square_distance(destination, corner):
                         score -= 1
+            if strategy == 'timer':
+                score -= 1
 
         state.pop()
         return score
@@ -193,5 +201,10 @@ class Map:
     def get_policy_move(self, board):
         # if there is no policy entry yet, return None
         if isinstance(self.policy[board.fen()], dict):
-            return None
+            moveNum = random.randint(0, board.legal_moves.count() - 1)
+            num = 0
+            for potential_move in board.legal_moves:
+                if num == moveNum:
+                    return potential_move.uci()
+                num += 1
         return self.policy[board.fen()]

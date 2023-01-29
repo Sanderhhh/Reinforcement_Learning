@@ -4,9 +4,9 @@ import chess.engine
 import random
 
 # TODO: set variable episode size.
-def run_algorithm(useEngine = False, problem_type = 'queen'):
-    reward_strategies = ['opponent_moves', 'blunder_queen', 'king_proximity']
-    map = algos.Map(0.7, reward_strategies, useEngine, 'SARSA')
+def run_algorithm(useEngine = True, problem_type = 'queen'):
+    reward_strategies = ['timer', 'piece_proximity', 'blunder_queen']
+    map = algos.Map(0.4, reward_strategies, useEngine, 'q_learning')
     board = make_board(problem_type)
     print(board)
     moves, game_total = 0, 0
@@ -14,22 +14,23 @@ def run_algorithm(useEngine = False, problem_type = 'queen'):
     if useEngine == True:
         engine = chess.engine.SimpleEngine.popen_uci\
                 (r"C:\Users\hofsa\Documents\stockfish_15.1_win_x64_popcnt\stockfish_15.1_win_x64_popcnt\stockfish-windows-2022-x86-64-modern.exe")
-    while(game_total != 1000):
+    while(game_total != 30000):
         game_total += 1
         moves = 0
         board = make_board(problem_type)
         print("Starting game number " + str(game_total))
         while(moves != 7 and not board.is_game_over()):
             moves += 1
-            for move in board.legal_moves:
-                map.set_qvalue(board, move.uci())
+            move = map.e_greedy(board)
+            #for move in board.legal_moves:
+            map.set_qvalue(board, move)
             map.update_policy(board, board.legal_moves)
             try:
-                bestMove = map.get_policy_move(board)
-                bestMove_pushable = chess.Move.from_uci(bestMove)
-                board = play_turn(board, bestMove_pushable, engine, False)
+                #bestMove = map.e_greedy(board)
+                bestMove_pushable = chess.Move.from_uci(move)
+                board = play_turn(board, bestMove_pushable, engine, useEngine)
                 # board.push(bestMove_pushable)
-            except TypeError:
+            except TypeError:       # case where we analyze board with no legal moves
                 break
             print(board)
     board = make_board(problem_type)
@@ -41,7 +42,7 @@ def play_turn(board, move, engine, useEngine):
     if board.is_game_over():
         return board
     if useEngine:
-        blackMove = engine.play(board, chess.engine.Limit(time=0.1))
+        blackMove = engine.play(board, chess.engine.Limit(time=0.01))
         board.push(blackMove.move)
     else:
         make_random_move(board)
