@@ -3,6 +3,10 @@ import chess
 import chess.engine
 import numpy as np
 import random
+import value_iteration
+
+#def value_iteration:
+
 
 # Q_learning class that contains formulas and parameters for the Q-learning algorithm
 import run_algorithm
@@ -14,59 +18,56 @@ class Q_learning:
         self.type = type
 
     # Calculates the Q-value associated with a state-action pair
-    def calculate_q(self, map, state, action):
+    def calculate_q(self, map, state, action, iteration):
         if self.type == "q_learning":
-            return map.get_qvalue(state, action) + self.alpha * (map.get_state_reward(state, action) +
+            return map.get_qvalue(state, action) + self.alpha * (map.get_state_reward(state, action, iteration) +
                                     (self.gamma * map.get_max_q_next_state(state, action)) - map.get_qvalue(state, action))
         if self.type == "SARSA":
-            return map.get_qvalue(state, action) + self.alpha * (map.get_state_reward(state, action) +
+            return map.get_qvalue(state, action) + self.alpha * (map.get_state_reward(state, action, iteration) +
                                 (self.gamma * map.get_q_next_state_action(state, action)) - map.get_qvalue(state, action))
 
 class Map:
-    def __init__(self, epsilon = 0, reward_strategies = list('engine_eval'), useEngine = 'True', learning_type = 'q_learning'):
+    def __init__(self, iterations, epsilon = 0, reward_strategies = list('engine_eval'), useEngine = False, learning_type = 'q_learning'):
         self.algorithm = Q_learning(learning_type)          # Algorithm of our choosing
         self.epsilon = epsilon                              # Value for e-greedy, leave at 0 for greedy
-        self.policy = defaultdict(dict)                     # Dictionary of best move (uci) per state
         self.qvalues = defaultdict(dict)                    # Double-indexed dictionary with q-values for state-action pairs
         self.reward_strategies = reward_strategies          # Reward strategy list, "engine_eval", "opponent_moves", "piece_proximity", "is_check"
         # Chess engine that calculates the best moves and (optionally) state rewards
         self.useEngine = useEngine
         self.Engine = None
+        self.iteration = 0
+        self.checkmates_by_iteration = np.zeros(iterations, dtype = np.int8)
         if useEngine == True or reward_strategies[0] == 'engine_eval':
             self.engine = chess.engine.SimpleEngine.popen_uci\
                 (r"C:\Users\hofsa\Documents\stockfish_15.1_win_x64_popcnt\stockfish_15.1_win_x64_popcnt\stockfish-windows-2022-x86-64-modern.exe")
 
-    def update_policy(self, board, legal_moves):
+    # function that gets the policy move without creating a seperate policy dictionary
+    def get_best_move(self, board, legal_moves):
         bestMove = 0    # keeps track of the uci-string associated with the best move
         max = -100000         # value of the best move
         for move in legal_moves:        # loop through all the moves in a state and choose the best one
             try:
-                # print("For the move " + move.uci() + ", the Q-value is: " + str(self.qvalues[board.fen()][move.uci()]))
-                if self.qvalues[board.fen()][move.uci()] == max:
-                    num = random.randint(0, legal_moves.count())
-                    if num == 1:
-                        # print("Skibiddi bibbidy")
-                        bestMove = move.uci()
-                if self.qvalues[board.fen()][move.uci()] > max:
-                    max = self.qvalues[board.fen()][move.uci()]
+                # print("For the move " + move.uci() + ", the Q-value is: " + str(self.qvalues[board.unicode()][move.uci()]))
+                if self.qvalues[board.unicode()][move.uci()] > max:
+                    max = self.qvalues[board.unicode()][move.uci()]
                     bestMove = move.uci()
             except KeyError:
-                self.qvalues[board.fen()][move.uci()] = 0
-                if self.qvalues[board.fen()][move.uci()] > max:
-                    max = self.qvalues[board.fen()][move.uci()]
+                self.qvalues[board.unicode()][move.uci()] = 0
+                if self.qvalues[board.unicode()][move.uci()] > max:
+                    max = self.qvalues[board.unicode()][move.uci()]
                     bestMove = move.uci()
-        self.policy[board.fen()] = bestMove     # set the policy to the best move
+        return bestMove
 
-    def set_qvalue(self, state, action):
+    def set_qvalue(self, state, action, iteration):
         # set the estimated value of a state.
-        self.qvalues[state.fen()][action] = self.algorithm.calculate_q(self, state, action)
+        self.qvalues[state.unicode()][action] = self.algorithm.calculate_q(self, state, action, iteration)
 
     def get_qvalue(self, state, action):
         try:            # if the q-value exists, return it, otherwise set it to 0 and return that.
-            return self.qvalues[state.fen()][action]
+            return self.qvalues[state.unicode()][action]
         except KeyError:
-            self.qvalues[state.fen()][action] = 0
-            return self.qvalues[state.fen()][action]
+            self.qvalues[state.unicode()][action] = 0
+            return self.qvalues[state.unicode()][action]
 
     def get_max_q_next_state(self, state, action):
         # in order to get the max q-value for the next state, we have to simulate that the move is played, then
@@ -78,19 +79,19 @@ class Map:
         max_q = -1000
         if board2.legal_moves.count()==0:
             return 0
-        for black_move in board2.legal_moves:
-            # make a move for black
-            board2.push(black_move)
-            for white_move in board2.legal_moves:
-                try:
-                    if self.qvalues[board2.fen()][white_move.uci()] >= max_q:
-                        # if the max q is higher store that value
-                        max_q = self.qvalues[board2.fen()][white_move.uci()]
-                except KeyError:
-                    self.qvalues[board2.fen()][white_move.uci()] = 0
-                    if max_q == -1000:
-                        max_q = 0
-            board2.pop()
+        black_move = self.engine.play(board2, chess.engine.Limit(time=0.001))
+        board2.push(black_move.move)
+        for white_move in board2.legal_moves:
+            try:
+                if self.qvalues[board2.unicode()][white_move.uci()] >= max_q:
+                    # if the max q is higher store that value
+                    max_q = self.qvalues[board2.unicode()][white_move.uci()]
+            except KeyError:
+                self.qvalues[board2.unicode()][white_move.uci()] = 0
+                if self.qvalues[board2.unicode()][white_move.uci()] >= max_q:
+                    # if the max q is higher store that value
+                    max_q = self.qvalues[board2.unicode()][white_move.uci()]
+        board2.pop()
         return max_q
 
     def get_q_next_state_action(self, state, action):
@@ -112,36 +113,28 @@ class Map:
         if num < self.epsilon and board.legal_moves.count() > 1:
             # return a random move if value unnder epsilon
             moveNum = random.randint(0, board.legal_moves.count() - 1)
-            num = 0
-            for potential_move in board.legal_moves:
-                if num == moveNum:
-                    return potential_move.uci()
-                num += 1
+            return list(board.legal_moves)[moveNum].uci()
         else:
-            return self.get_policy_move(board)
-    
-    #TODO integrate this function with chess
-    #TODO float(total_action_reward[i]) / (float(total_action_instances[i]) + 1) should probably be changed with stored Q values
-    def u_c_b(self, q_values, total_action_reward, total_action_instances, t):
-        c = 0.4  # value with which we tamper for better performance
-        for i in range(len(q_values)):
-            q_values[i] = float(total_action_reward[i]) / (float(total_action_instances[i]) + 1) \
-                                        + c * np.sqrt(np.log(t + 1) / (total_action_instances[i] + 1))
+            return self.get_best_move(board, board.legal_moves)
 
-        return q_values
-
-    def get_state_reward(self, state, action):
+    def get_state_reward(self, state, action, iteration):
         score = 0                                       # variable to keep track of the state reward
         action_pushable = chess.Move.from_uci(action)   # push the action, so that we get the reward of the resulting state
         state.push(action_pushable)
         if state.is_game_over():                        # if the game is over, return the max reward, but only if we win
             if state.is_checkmate():
-                print("CHECKMATE")
-                score = 10
+                self.epsilon = self.epsilon - 1.0/1000
+                if self.epsilon < 0.01:
+                    self.epsilon = 0.01
+                print("Checkmate at iteration " + str(iteration))
+                if iteration > 0:
+                    self.checkmates_by_iteration[iteration] += 1
+                score = 1000
             else:
-                score = -1.1
+                score = -10
             state.pop()
             return score
+        """
         for strategy in self.reward_strategies:
             # if the reward strategy is engine evaluation, let the engine analyze the position, and use that to calculate the reward
             if strategy == 'engine_eval':
@@ -156,6 +149,7 @@ class Map:
                 if isinstance(score, chess.engine.Cp):
                     score = score.score()/1000 - 10
                 state.pop()     # undo the simulated moves
+            
             if strategy == 'opponent_moves':
                 score += 8 - state.legal_moves.count()
             if strategy == 'is_check':
@@ -194,17 +188,10 @@ class Map:
                         score -= 1
             if strategy == 'timer':
                 score -= 1
+            """
 
         state.pop()
-        return score
+        return score -1
 
-    def get_policy_move(self, board):
-        # if there is no policy entry yet, return None
-        if isinstance(self.policy[board.fen()], dict):
-            moveNum = random.randint(0, board.legal_moves.count() - 1)
-            num = 0
-            for potential_move in board.legal_moves:
-                if num == moveNum:
-                    return potential_move.uci()
-                num += 1
-        return self.policy[board.fen()]
+    def get_checkmate_list(self):
+        return self.checkmates_by_iteration

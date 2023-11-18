@@ -3,38 +3,37 @@ import chess
 import chess.engine
 import random
 
-# TODO: set variable episode size.
-def run_algorithm(useEngine = True, problem_type = 'queen'):
-    reward_strategies = ['timer', 'piece_proximity', 'blunder_queen']
-    map = algos.Map(0.4, reward_strategies, useEngine, 'q_learning')
-    board = make_board(problem_type)
-    print(board)
-    moves, game_total = 0, 0
+def run_algorithm(useEngine = True, problem_type = 'queen', depth = 8, imitation_iterations = 15, iterations = 3000):
+    reward_strategies = ['timer']
+    map = algos.Map(iterations, 0.2, reward_strategies, useEngine, 'SARSA')
+    moves, game_total, imitation_games = 0, 0, 0
     engine = None
     if useEngine == True:
         engine = chess.engine.SimpleEngine.popen_uci\
                 (r"C:\Users\hofsa\Documents\stockfish_15.1_win_x64_popcnt\stockfish_15.1_win_x64_popcnt\stockfish-windows-2022-x86-64-modern.exe")
-    while(game_total != 30000):
-        game_total += 1
+    while(imitation_games < imitation_iterations):
+        imitation_games += 1
+        board = make_board(problem_type)
+        imitation_learning(board, map, engine, depth)
+    while(game_total != iterations):
         moves = 0
         board = make_board(problem_type)
-        print("Starting game number " + str(game_total))
-        while(moves != 7 and not board.is_game_over()):
+        # print("Starting game number " + str(game_total))
+        while(moves != depth and not board.is_game_over()):
             moves += 1
             move = map.e_greedy(board)
             #for move in board.legal_moves:
-            map.set_qvalue(board, move)
-            map.update_policy(board, board.legal_moves)
+            map.set_qvalue(board, move, game_total)
             try:
                 #bestMove = map.e_greedy(board)
                 bestMove_pushable = chess.Move.from_uci(move)
-                board = play_turn(board, bestMove_pushable, engine, useEngine)
+                board = play_turn(board, bestMove_pushable, engine, False)
                 # board.push(bestMove_pushable)
             except TypeError:       # case where we analyze board with no legal moves
                 break
-            print(board)
-    board = make_board(problem_type)
-    optimal_play_sequence(board, map, engine, useEngine)
+        game_total += 1
+    # optimal_play_sequence(board, map, engine, useEngine)
+    return map.get_checkmate_list()
 
 def play_turn(board, move, engine, useEngine):
     board.push(move)
@@ -70,17 +69,28 @@ def make_random_move(board):
 
 def optimal_play_sequence(board, map, engine, useEngine):
     print("Learning is finished. The optimal sequence of play is as follows: ")
-    while board.is_game_over:
+    move_count = 0
+    while board.is_game_over and move_count < 30:
+        move_count += 1
         print(board)
         print()
         try:
-            bestMove = map.get_policy_move(board)
+            bestMove = map.get_best_move(board)
             bestMove_pushable = chess.Move.from_uci(bestMove)
             board = play_turn(board, bestMove_pushable, engine, useEngine)
             # board.push(bestMove_pushable)
         except TypeError:
             break
 
+def imitation_learning(board, map, engine, depth):
+    moveCounter = 0
+    while not board.is_game_over() and moveCounter != depth:
+        moveCounter += 1
+        # print(board)
+        move = engine.play(board, chess.engine.Limit(time = 1))
+        # print("Best move: " + move.move.uci())
+        map.set_qvalue(board, move.move.uci(), 0)
+        play_turn(board, move.move, engine, True)
 
 def make_board(problem):
     if problem == "queen":
